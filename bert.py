@@ -24,17 +24,17 @@ import tensorflow as tf
 
 def generate_model(num_numerical_features):
     # Load the pre-trained BERT model
-    bert_model = TFBertModel.from_pretrained('google/bert_uncased_L-2_H-128_A-2')
+    roberta_model = TFRobertaModel.from_pretrained('roberta-base')
 
     # BERT inputs
     input_ids = Input(shape=(1024,), dtype=tf.int32, name='input_ids')
     attention_mask = Input(shape=(1024,), dtype=tf.int32, name='attention_mask')
 
     # BERT layer
-    bert_output = bert_model(input_ids, attention_mask=attention_mask)[0]
+    roberta_output = roberta_model(input_ids, attention_mask=attention_mask)[0]
 
     # CNN layers
-    cnn_output = Conv1D(4, 6, padding='valid', kernel_regularizer='l2')(bert_output)
+    cnn_output = Conv1D(4, 6, padding='valid')(roberta_output)
     cnn_output = MaxPooling1D(1, strides=1)(cnn_output)
     cnn_output = Flatten()(cnn_output)
 
@@ -46,31 +46,30 @@ def generate_model(num_numerical_features):
     combined_features = Concatenate()([cnn_output, numerical_dense])
 
     # Dense layers
-    combined_features = Dense(256, activation='relu')(combined_features)
-    combined_features = Dropout(0.5)(combined_features)
     combined_features = Dense(128, activation='relu')(combined_features)
-    combined_features = Dropout(0.5)(combined_features)
+    # combined_features = Dropout(0.2)(combined_features)
     combined_features = Dense(8, activation='relu')(combined_features)
-    combined_features = Dropout(0.5)(combined_features)
+    # combined_features = Dropout(0.2)(combined_features)
     combined_features = Dense(4, activation='relu')(combined_features)
-    combined_features = Dropout(0.5)(combined_features)
+    # combined_features = Dropout(0.2)(combined_features)
 
     # Output layer
     final_output = Dense(1, activation='sigmoid')(combined_features)
 
     # Construct the final model
     model = Model(inputs=[input_ids, attention_mask, numerical_input], outputs=final_output)
-    model.compile(optimizer=Adam(learning_rate=0.001), loss='mse', metrics=['mae'])
+    model.compile(optimizer=Adam(learning_rate=0.0001), loss='mse', metrics=['mae'])
 
     return model
 
 
 from transformers import BertTokenizer
+from transformers import TFRobertaModel, RobertaTokenizer
 
 def preprocess_lyrics(data, tokenizer, max_length=1024):
     # Clean the lyrics
     data['lyrics_processed'] = data['lyrics.1'].str.lower()  # Convert to lowercase
-    data['lyrics_processed'] = data['lyrics_processed'].str.replace('[^a-zA-Z]', ' ', regex=True)  # Remove special characters and numbers
+    # data['lyrics_processed'] = data['lyrics_processed'].str.replace('[^a-zA-Z]', ' ', regex=True)  # Remove special characters and numbers
 
     # Tokenize and encode the lyrics for BERT
     tokenized_data = tokenizer(
@@ -84,10 +83,13 @@ def preprocess_lyrics(data, tokenizer, max_length=1024):
 
     return tokenized_data['input_ids'], tokenized_data['attention_mask']
 
+model_name = 'roberta-base'  # Or any other variant of RoBERTa you wish to use
+tokenizer = RobertaTokenizer.from_pretrained(model_name)
+roberta_model = TFRobertaModel.from_pretrained(model_name)
 
-# Load the tokenizer
-model_name = 'google/bert_uncased_L-2_H-128_A-2'
-tokenizer = BertTokenizer.from_pretrained(model_name)
+# # Load the tokenizer
+# model_name = 'bert-base-uncased'
+# tokenizer = BertTokenizer.from_pretrained(model_name)
 
 # Load your dataset
 final_data = pd.read_csv('final_data.csv')
@@ -125,9 +127,11 @@ model = generate_model(num_numerical_features)
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 model_checkpoint = ModelCheckpoint(
-    'model_epoch_{epoch:02d}.hdf5',  # Change the file path and naming as needed
-    save_freq='epoch',
-    save_best_only=True  # Change to True if you want to save only the best model
+    'best_model.hdf5',  # Change the file path and naming as needed
+    monitor='val_loss',  # or another metric that you want to monitor
+    mode='min',  # for loss, 'min' mode; for accuracy, 'max' mode
+    save_best_only=True,
+    verbose=1
 )
 
 # Early stopping callback
