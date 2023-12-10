@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Dec  3 21:18:40 2023
-
-@author: Upmanyu
-"""
 import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
@@ -16,26 +10,38 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import plot_model
 # import plotly.express as px
 from sklearn.decomposition import PCA
-
+import numpy as np
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense, Dropout, Conv1D, MaxPooling1D, Flatten, Concatenate
 from transformers import TFBertModel
 import tensorflow as tf
 
+def apply_pca_to_combined_data(embeddings_train, embeddings_val, numerical_train, numerical_val, n_components):
+    # Concatenate BERT embeddings and numerical features
+    combined_train = np.concatenate([embeddings_train, numerical_train], axis=1)
+    combined_val = np.concatenate([embeddings_val, numerical_val], axis=1)
+    
+    # Apply PCA
+    pca = PCA(n_components=n_components)
+    reduced_train = pca.fit_transform(combined_train)
+    reduced_val = pca.transform(combined_val)
+
+    return reduced_train, reduced_val
+
 def generate_model(num_numerical_features):
     # Load the pre-trained BERT model
-    roberta_model = TFRobertaModel.from_pretrained('roberta-base')
+    roberta_model = TFBertModel.from_pretrained('bert-base-uncased')
 
     # BERT inputs
-    input_ids = Input(shape=(1024,), dtype=tf.int32, name='input_ids')
-    attention_mask = Input(shape=(1024,), dtype=tf.int32, name='attention_mask')
-
+    input_ids = Input(shape=(200,), dtype=tf.int32, name='input_ids')
+    attention_mask = Input(shape=(200,), dtype=tf.int32, name='attention_mask')
+    
     # BERT layer
     roberta_output = roberta_model(input_ids, attention_mask=attention_mask)[0]
 
     # CNN layers
-    cnn_output = Conv1D(4, 6, padding='valid')(roberta_output)
-    cnn_output = MaxPooling1D(1, strides=1)(cnn_output)
+    cnn_output = Conv1D(6,4, padding='valid')(roberta_output)
+    #cnn_output = MaxPooling1D(1, strides=1)(cnn_output)
     cnn_output = Flatten()(cnn_output)
 
     # Additional input for numerical features
@@ -46,11 +52,12 @@ def generate_model(num_numerical_features):
     combined_features = Concatenate()([cnn_output, numerical_dense])
 
     # Dense layers
+    combine_features = Dense(256, activation='relu')(combined_features)
     combined_features = Dense(128, activation='relu')(combined_features)
     # combined_features = Dropout(0.2)(combined_features)
-    combined_features = Dense(8, activation='relu')(combined_features)
+    combined_features = Dense(100, activation='sigmoid')(combined_features)
     # combined_features = Dropout(0.2)(combined_features)
-    combined_features = Dense(4, activation='relu')(combined_features)
+    combined_features = Dense(50, activation='sigmoid')(combined_features)
     # combined_features = Dropout(0.2)(combined_features)
 
     # Output layer
@@ -66,7 +73,7 @@ def generate_model(num_numerical_features):
 from transformers import BertTokenizer
 from transformers import TFRobertaModel, RobertaTokenizer
 
-def preprocess_lyrics(data, tokenizer, max_length=1024):
+def preprocess_lyrics(data, tokenizer, max_length=512):
     # Clean the lyrics
     data['lyrics_processed'] = data['lyrics.1'].str.lower()  # Convert to lowercase
     # data['lyrics_processed'] = data['lyrics_processed'].str.replace('[^a-zA-Z]', ' ', regex=True)  # Remove special characters and numbers
@@ -83,9 +90,9 @@ def preprocess_lyrics(data, tokenizer, max_length=1024):
 
     return tokenized_data['input_ids'], tokenized_data['attention_mask']
 
-model_name = 'roberta-base'  # Or any other variant of RoBERTa you wish to use
-tokenizer = RobertaTokenizer.from_pretrained(model_name)
-roberta_model = TFRobertaModel.from_pretrained(model_name)
+model_name = 'bert-base-uncased'  # Or any other variant of RoBERTa you wish to use
+tokenizer = BertTokenizer.from_pretrained(model_name)
+model = TFBertModel.from_pretrained(model_name)
 
 # # Load the tokenizer
 # model_name = 'bert-base-uncased'
@@ -137,10 +144,13 @@ model_checkpoint = ModelCheckpoint(
 # Early stopping callback
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
+n_components = 200  # Example value, adjust as needed
+x_train_reduced, x_val_reduced = apply_pca_to_combined_data(train_input_ids, val_input_ids, x_train_numerical, x_val_numerical, n_components)
+
 # Train the model
-history = model.fit(x_train_combined, y_train, 
-                    validation_data=(x_val_combined, y_val), 
-                    epochs=100, batch_size=32, 
+history = model.fit(x_train_reduced, y_train, 
+                    validation_data=(x_val_reduced, y_val), 
+                    epochs=100, batch_size=8, 
                     callbacks=[early_stopping, 
                                model_checkpoint])
 

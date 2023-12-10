@@ -13,40 +13,35 @@ df = pd.read_csv('final_data.csv')
 df.drop_duplicates(['track_name', 'track_artist'], inplace=True)
 
 df.drop_duplicates(['lyrics.1'], inplace=True)
-scaler = StandardScaler()
-popularity_2d = df['track_popularity'].values.reshape(-1, 1)
+# scaler = StandardScaler()
+# popularity_2d = df['track_popularity'].values.reshape(-1, 1)
 
-# Apply StandardScaler
-scaler = StandardScaler()
-df['track_popularity'] = scaler.fit_transform(popularity_2d)
+# # Apply StandardScaler
+# scaler = StandardScaler()
+df['track_popularity'] = df['track_popularity']/98
 
 # Split the data
 train_data, temp_data = train_test_split(df, test_size=0.2, random_state=42)
 val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
-from torch import nn
+test_data.to_csv('test_data.csv',index=False)
+
+from transformers import BertModel, BertPreTrainedModel
+import torch.nn as nn
+import torch.nn.functional as F
+
+from transformers import BertModel, BertPreTrainedModel
 
 class BertRegresser(BertPreTrainedModel):
     def __init__(self, config):
-        super().__init__(config)
+        super(BertRegresser, self).__init__(config)
         self.bert = BertModel(config)
-        #The output layer that takes the [CLS] representation and gives an output
-        self.cls_layer1 = nn.Linear(config.hidden_size,128)
-        self.relu1 = nn.ReLU()
-        self.ff1 = nn.Linear(128,128)
-        self.tanh1 = nn.Tanh()
-        self.ff2 = nn.Linear(128,1)
+        # self.dropout = nn.Dropout(0.2)  # Example dropout rate
 
     def forward(self, input_ids, attention_mask):
-        #Feed the input to Bert model to obtain contextualized representations
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-        #Obtain the representations of [CLS] heads
-        logits = outputs.last_hidden_state[:,0,:]
-        output = self.cls_layer1(logits)
-        output = self.relu1(output)
-        output = self.ff1(output)
-        output = self.tanh1(output)
-        output = self.ff2(output)
-        return output
+        cls_output = outputs.last_hidden_state[:, 0]
+        cls_output = self.dropout(cls_output)  # Apply dropout
+        return torch.sigmoid(cls_output).squeeze(-1)
 
 
 def prepare_data_loader(df, tokenizer, batch_size):
@@ -59,13 +54,23 @@ def prepare_data_loader(df, tokenizer, batch_size):
     return DataLoader(dataset, batch_size=batch_size)
 
 ## Configuration loaded from AutoConfig 
-config = AutoConfig.from_pretrained('bert-base-uncased')
+from transformers import AutoConfig, AutoTokenizer, AutoModelForSequenceClassification
 
-tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-# Load the pre-trained BERT model
-model = BertRegresser.from_pretrained('bert-base-uncased', config=config)
+# Load the configuration from the fine-tuned model
+config = AutoConfig.from_pretrained('vagrawal787/bert-finetuned-lyrics-genres')
+# config = AutoConfig.from_pretrained('prajjwal1/bert-tiny')
+
+# Update the number of labels in the configuration for regression
+config.num_labels = 1
+
+# Load the tokenizer from the fine-tuned model
+tokenizer = AutoTokenizer.from_pretrained("vagrawal787/bert-finetuned-lyrics-genres")
+# tokenizer = AutoTokenizer.from_pretrained("prajjwal1/bert-tiny")
+
+# Load a general pre-trained BERT model using the updated configuration
+model = AutoModelForSequenceClassification.from_pretrained("google/bert_uncased_L-8_H-768_A-12", config=config)
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 model = model.to(device)
 
 # Create an instance of the custom model
@@ -88,11 +93,14 @@ from torch.optim import Adam
 # Define loss function and optimizer
 loss_function = MSELoss()
 
-optimizer = Adam(model.parameters(), lr=5e-5)
+optimizer = Adam(model.parameters(), lr=5e-5, weight_decay=1e-4)  # Example weight decay value
+
 scheduler = StepLR(optimizer, step_size=1, gamma=0.1)  # Adjust as needed
 
 def train_model(model, train_loader, val_loader, device, epochs):
     from tqdm import tqdm
+    best_val_loss = float('inf')
+
     for epoch in tqdm(range(epochs), desc="Epochs"):
         model.train()
         train_loss = 0
@@ -101,8 +109,9 @@ def train_model(model, train_loader, val_loader, device, epochs):
         for batch in train_loader:
             input_ids, attention_mask, labels = [b.to(device) for b in batch]
             optimizer.zero_grad()
+            outputs = model(input_ids, attention_mask=attention_mask)
 
-            logits = model(input_ids, attention_mask=attention_mask).squeeze(-1)
+            logits = outputs.logits.squeeze(-1)
             loss = loss_function(logits, labels.float())
             loss.backward()
             optimizer.step()
@@ -116,12 +125,18 @@ def train_model(model, train_loader, val_loader, device, epochs):
         with torch.no_grad():
             for batch in val_loader:
                 input_ids, attention_mask, labels = [b.to(device) for b in batch]
-
-                logits = model(input_ids, attention_mask=attention_mask).squeeze(-1)
+                outputs = model(input_ids, attention_mask=attention_mask)
+                logits = outputs.logits.squeeze(-1)
                 loss = loss_function(logits, labels.float())
                 val_loss += loss.item()
-
+        
         avg_val_loss = val_loss / len(val_loader)
+
+        # Check if the current validation loss is lower than the best validation loss
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            torch.save(model.state_dict(), 'best_bert.pth')
+            print(f"Epoch {epoch + 1}: Validation loss improved, saving model...")
 
         print(f"Epoch {epoch + 1}/{epochs} - Train Loss: {avg_train_loss:.4f}, Validation Loss: {avg_val_loss:.4f}")
 
@@ -135,9 +150,13 @@ def evaluate_model(model, data_loader, device):
         for batch in data_loader:
             input_ids, attention_mask, labels = [b.to(device) for b in batch]
 
-            # Directly use the output tensor
+            # Get the model outputs (including logits)
             outputs = model(input_ids, attention_mask=attention_mask)
-            batch_predictions = outputs.squeeze(-1).cpu().numpy()  # Squeeze if the output has an extra dimension
+
+            # Extract the logits from the outputs
+            logits = outputs.logits.squeeze(-1)
+
+            batch_predictions = logits.cpu().numpy()
             batch_labels = labels.cpu().numpy()
 
             predictions.extend(batch_predictions)
