@@ -106,7 +106,6 @@ def train(train_file_path, model_name,
     trainer.save_model()
 
 #%%
-device = "cuda" if torch.cuda.is_available() else "cpu"
 def train_all_models():
     for artist in artist_lists:
         input_csv = f"{artist.lower().replace(' ', '_')}_df.csv"
@@ -121,7 +120,7 @@ def train_all_models():
         train(train_file_path, 'gpt2', output_dir, overwrite_output_dir,
                     per_device_train_batch_size, num_train_epochs, save_steps)
 
-train_all_models()
+# train_all_models() # UNCOMMENT NEEDED
 
 #%%
 # train_file_path = "queendf.csv"
@@ -173,6 +172,8 @@ def generate_text(model_path, sequence, max_length):
 import os
 model_base_path = 'results_'
 result_list = []
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 for artist in artist_lists:
     model_path = model_base_path + f"{artist.lower().replace(' ', '_')}"
     sequence = 'love is'
@@ -204,10 +205,37 @@ for artist in artist_lists:
 #%%
 # Model Evaluation - Lyric Similarity
 from sentence_transformers import SentenceTransformer
+from transformers import AutoTokenizer, AutoModel
+import torch.nn.functional as F
+import torch
 
-model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
+tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/all-mpnet-base-v2')
+model = AutoModel.from_pretrained('sentence-transformers/all-mpnet-base-v2').to(device)
 
+def mean_pooling(model_output, attention_mask):
+    token_embeddings = model_output[0] #First element of model_output contains all token embeddings
+    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
-model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
-embeddings = model.encode(sentences)
-print(embeddings)
+def read_csv_to_string(filename):
+    with open(filename) as f:
+        text = f.readlines()
+        text = ' '.join(text)
+    return text
+
+for result_dict in result_list:
+    artist = result_dict['artist']
+    generated_lyrics = result_dict['generated_lyrics']
+    sequence = result_dict['sequence']
+    real_lyrics = read_csv_to_string(f"{artist.lower().replace(' ', '_')}_df.csv")
+    lyrics = [generated_lyrics, real_lyrics]
+    encoded_input = tokenizer(lyrics, padding=True, truncation=True, return_tensors='pt').to(device)
+    with torch.no_grad():
+        model_output = model(**encoded_input)
+
+    sentence_embeddings = mean_pooling(model_output, encoded_input['attention_mask'])
+    sentence_embeddings = F.normalize(sentence_embeddings, p=2, dim=1)
+    similarity = F.cosine_similarity(sentence_embeddings[0].unsqueeze(0), sentence_embeddings[1].unsqueeze(0))
+    formatted_similarity = '{:.3f}'.format(similarity.item())
+    print(f"Cosine similarity between real and generated lyrics of {artist}: {formatted_similarity}")
+
