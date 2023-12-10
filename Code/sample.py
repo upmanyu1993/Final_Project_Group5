@@ -36,7 +36,7 @@ def run_lyrics_generator(model_base_path, artist_lists, sequence):
     for artist in artist_lists:
         model_path = model_base_path + f"{artist.lower().replace(' ', '_')}"
         # sequence = 'love is'
-        max_len = 1000
+        max_len = 500
         print(f"{artist}")
         generated_lyrics = generate_text(model_path, sequence, max_len)
     

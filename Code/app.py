@@ -16,22 +16,38 @@ def main():
     # Input fields for lyrics generation
     st.header("Generate Lyrics")
     model_path = 'results_'
-    artist_name = st.text_input("Enter artist name:")
+    # artist_name = st.text_input("Enter artist name:")
+    # starting_lyrics = st.text_area("Enter starting lyrics:")
+
+    # Button to generate lyrics
+    # if st.button('Generate Lyrics'):
+    #     if model_path and artist_name and starting_lyrics:
+    #         generated_lyrics = run_lyrics_generator(model_path, [artist_name], starting_lyrics)
+    #         # formatted_lyrics = generated_lyrics.replace("\n", "<br>")
+    #         # st.markdown(f"<b>{formatted_lyrics}</b>", unsafe_allow_html=True)
+    #         formatted_lyrics = generated_lyrics.replace("\n", "<br><br>")
+    #         # Center-aligning the lyrics
+    #         st.markdown(f"<div style='text-align: center;'><b>{formatted_lyrics}</b></div>", unsafe_allow_html=True)
+    #
+    #     else:
+    #         st.error("Please fill in all the fields.")
+
+    artist_names = ['Queen', 'David Guetta', 'Drake', "Guns N' Roses", 'Logic', 'The Chainsmokers', 'Martin Garrix', '2Pac', 'The Weeknd', 'Eminem']
+    selected_artist = st.selectbox("Select an artist:", artist_names)
     starting_lyrics = st.text_area("Enter starting lyrics:")
 
     # Button to generate lyrics
     if st.button('Generate Lyrics'):
-        if model_path and artist_name and starting_lyrics:
-            generated_lyrics = run_lyrics_generator(model_path, [artist_name], starting_lyrics)
-            # formatted_lyrics = generated_lyrics.replace("\n", "<br>")
-            # st.markdown(f"<b>{formatted_lyrics}</b>", unsafe_allow_html=True)
+        if starting_lyrics:
+            # model_path = f'results_{selected_artist.lower().replace(" ", "_")}'
+            generated_lyrics = run_lyrics_generator(model_path, [selected_artist], starting_lyrics)
             formatted_lyrics = generated_lyrics.replace("\n", "<br><br>")
             # Center-aligning the lyrics
-            st.markdown(f"<div style='text-align: center;'><b>{formatted_lyrics}</b></div>", unsafe_allow_html=True)
-
+            container = st.container(border=True)
+            container.markdown(f"<div style='text-align: center;'><b>{formatted_lyrics}</b></div>", unsafe_allow_html=True)
         else:
-            st.error("Please fill in all the fields.")
-    
+            st.error("Please enter starting lyrics.")
+
     summarizer = pipeline("summarization", model="Falconsai/text_summarization")
     tokenizer = AutoTokenizer.from_pretrained("bloomberg/KeyBART")
     model = AutoModelForSeq2SeqLM.from_pretrained("bloomberg/KeyBART")
