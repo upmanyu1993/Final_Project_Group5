@@ -19,6 +19,24 @@ def main():
     st.markdown("<h3 style='text-align: center; color: blue;'>Jiwoo Suh 🚀</h3>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center; color: blue;'>Sanjana Godolkar 🚀</h3>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center; color: blue;'>Upmanyu Singh 🚀</h3>", unsafe_allow_html=True)
+    st.subheader("Building Artist-Specific Lyric Generators", divider = 'rainbow')
+    df = pd.read_csv('artist10df.csv')
+
+    # Calculate artist lyrics count
+    artist_lyrics_count = df.groupby('track_artist')['lyrics'].count().reset_index()
+    artist_lyrics_count.columns = ['track_artist', 'lyrics_count']
+    artist_lyrics_count = artist_lyrics_count.sort_values(by='lyrics_count', ascending=False)
+    artist_lyrics_count10 = artist_lyrics_count[:10]
+    artist_lists = artist_lyrics_count10.track_artist.to_list()
+
+    # st.header("Artist Lyrics Analysis")
+
+    # Display the dataframe
+    st.subheader("Top 10 Artists by Lyrics Count")
+    col1, col2, col3 = st.columns([1,2,1])
+    col2.dataframe(artist_lyrics_count10,
+                   hide_index=True,
+                   use_container_width=True)
 
     # Section for Lyrics Generation
     st.header("🎵 Generate Your Hit Lyrics 🌈")
@@ -80,7 +98,16 @@ def main():
                 time.sleep(0.05)
             st.success(f"🌟 Popularity Score: {regression_score[0][0]:.2f}")
             st.success(f"🌟Popularity Category: {dictionary[category[0]]}")
-    
+
+    # Result display
+    import json
+    file_path = 'result_data.json'
+    with open(file_path, 'r') as file:
+        json_data = json.load(file)
+    result_df = pd.DataFrame(json_data)
+    st.header("Example Results")
+    st.dataframe(result_df, hide_index=True)
+
     summarizer = pipeline("summarization", model="Falconsai/text_summarization")
     tokenizer = AutoTokenizer.from_pretrained("bloomberg/KeyBART")
     model = AutoModelForSeq2SeqLM.from_pretrained("bloomberg/KeyBART")

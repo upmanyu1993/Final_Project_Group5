@@ -8,6 +8,27 @@ import json
 
 def main():
     st.title("Lyric Genie")
+
+    summarizer = pipeline("summarization", model="Falconsai/text_summarization")
+    tokenizer = AutoTokenizer.from_pretrained("bloomberg/KeyBART")
+    model = AutoModelForSeq2SeqLM.from_pretrained("bloomberg/KeyBART")
+
+    st.header("Lyrics Analysis")
+
+    lyrics = st.text_input("Enter lyrics:")
+
+    if st.button('Analysis'):
+        if model and tokenizer and lyrics and summarizer:
+            st.write('Summerized lyrics')
+            summ = get_summarized_lyrics(lyrics, summarizer)
+            st.markdown(f"<div style='text-align: center;'><b>{summ}</b></div>", unsafe_allow_html=True)
+
+            st.write('Keyword extraction')
+            keyword = get_keywords(lyrics)
+            st.markdown(f"<div style='text-align: center;'><b>{keyword}</b></div>", unsafe_allow_html=True)
+        else:
+            st.error('Please fill in all the fields.')
+
     st.subheader("Building Artist-Specific Lyric Generators", divider = 'rainbow')
     df = pd.read_csv('artist10df.csv')
 
@@ -82,36 +103,12 @@ def main():
             st.error("Please enter starting lyrics.")
 
     # Result display
-    file_path = 'result_data.json'  # Replace with the actual file path
+    file_path = 'result_data.json'
     with open(file_path, 'r') as file:
         json_data = json.load(file)
     result_df = pd.DataFrame(json_data)
     st.header("Example Results")
     st.dataframe(result_df, hide_index=True)
-
-
-
-    summarizer = pipeline("summarization", model="Falconsai/text_summarization")
-    tokenizer = AutoTokenizer.from_pretrained("bloomberg/KeyBART")
-    model = AutoModelForSeq2SeqLM.from_pretrained("bloomberg/KeyBART")
-
-    st.header("Lyrics Analysis")
-
-
-    lyrics = st.text_input("Enter lyrics:")
-    
-    if st.button('Analysis'):
-        if model and tokenizer and lyrics and summarizer:
-            st.write('Summerized lyrics')
-            summ = get_summarized_lyrics(lyrics, summarizer)
-            st.markdown(f"<div style='text-align: center;'><b>{summ}</b></div>", unsafe_allow_html=True)
-            
-            st.write('Keyword extraction')
-            keyword = get_keywords(lyrics)
-            st.markdown(f"<div style='text-align: center;'><b>{keyword}</b></div>", unsafe_allow_html=True)
-        else:
-            st.error('Please fill in all the fields.')
-
 
     # Rest of your team members and details
     # st.write("2. Sanjana")
