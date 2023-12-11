@@ -20,7 +20,10 @@ def run_lyrics_generator(model_base_path, artist_lists, sequence):
             ids,
             do_sample=True,
             max_length=max_length,
+            num_beams=5,
             pad_token_id=model.config.eos_token_id,
+            early_stopping=True,
+            no_repeat_ngram_size=5,
             top_k=50,
             top_p=0.95,
         )
@@ -70,7 +73,7 @@ def calculate_cosine_similarity(artist, generated_lyrics):
 
     tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/all-mpnet-base-v2')
     model = AutoModel.from_pretrained('sentence-transformers/all-mpnet-base-v2').to(device)
-    real_lyrics = read_csv_to_string(f"{artist.lower().replace(' ', '_')}_df.csv")
+    real_lyrics = read_csv_to_string(f"train_{artist.lower().replace(' ', '_')}_dataset.csv")
 
     lyrics = [generated_lyrics, real_lyrics]
     encoded_input = tokenizer(lyrics, padding=True, truncation=True, return_tensors='pt').to(device)
