@@ -295,6 +295,8 @@ for result_dict in result_list:
 
 #%%
 import json
-# json_filename = 'result_data.json'
-# with open(json_filename, 'w') as json_file:
-#     json.dump(result_list, json_file, indent=2)
+json_filename = 'result_data.json'
+with open(json_filename, 'w') as json_file:
+    json.dump(result_list, json_file, indent=2)
+
+result_df = pd.read_json('result_data.json')

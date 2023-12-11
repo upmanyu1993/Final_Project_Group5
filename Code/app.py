@@ -3,7 +3,7 @@ from sample import run_lyrics_generator, calculate_cosine_similarity, read_csv_t
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 import pandas as pd
 from lyrics_analysis import get_summarized_lyrics, get_summarization, get_keywords
-
+import json
 
 
 def main():
@@ -81,11 +81,23 @@ def main():
         else:
             st.error("Please enter starting lyrics.")
 
+    # Result display
+    file_path = 'result_data.json'  # Replace with the actual file path
+    with open(file_path, 'r') as file:
+        json_data = json.load(file)
+    result_df = pd.DataFrame(json_data)
+    st.header("Example Results")
+    st.dataframe(result_df, hide_index=True)
+
+
+
     summarizer = pipeline("summarization", model="Falconsai/text_summarization")
     tokenizer = AutoTokenizer.from_pretrained("bloomberg/KeyBART")
     model = AutoModelForSeq2SeqLM.from_pretrained("bloomberg/KeyBART")
 
     st.header("Lyrics Analysis")
+
+
     lyrics = st.text_input("Enter lyrics:")
     
     if st.button('Analysis'):
@@ -102,7 +114,7 @@ def main():
 
 
     # Rest of your team members and details
-    st.write("2. Sanjana")
+    # st.write("2. Sanjana")
     # ... rest of your code ...
 
 if __name__ == "__main__":
