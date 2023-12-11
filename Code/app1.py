@@ -1,0 +1,109 @@
+import streamlit as st
+from sample import run_lyrics_generator, read_csv_to_string, calculate_cosine_similarity
+from lyrics_analysis import get_summarized_lyrics, get_keywords
+from sentence_transformers import SentenceTransformer
+import joblib
+from tensorflow.keras.models import load_model
+import time
+import numpy as np
+import xgboost as xgb
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
+import pandas as pd
+
+def main():
+    artist = pd.read_csv('artist_feature_means.csv')
+    st.title("🎶 Final Project NLP : LyricsGenie 🎤")
+
+    # Stylish Display for Team Members
+    st.header("🌟 Project Team Superstars 🌟")
+    st.markdown("<h3 style='text-align: center; color: blue;'>Jiwoo Suh 🚀</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: blue;'>Sanjana Godolkar 🚀</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: blue;'>Upmanyu Singh 🚀</h3>", unsafe_allow_html=True)
+
+    # Section for Lyrics Generation
+    st.header("🎵 Generate Your Hit Lyrics 🌈")
+    artist_names = ['David Guetta', 'Logic']
+    selected_artist = st.selectbox("Pick your artist 🎤:", artist_names, index=0, help="Select an artist to mimic their style!")
+    starting_lyrics = st.text_area("Kickstart your lyrics 📝:", help="Enter the first few lines of your masterpiece!")
+
+    # Button to generate lyrics
+    if st.button('🎼 Spin the Lyrics Wheel 🎡'):
+        model_path = 'results_'
+        if starting_lyrics:
+            generated_lyrics = run_lyrics_generator(model_path, [selected_artist], starting_lyrics)
+            formatted_lyrics = generated_lyrics.replace("\n", "<br><br>")
+            
+            container = st.container()
+            container.markdown(f"<div style='background-color:#F5F5F5;padding:10px;border-radius:10px;text-align: center;'><h3>🎶 Your Lyrics Creation 🎶</h3><p>{formatted_lyrics}</p></div>", unsafe_allow_html=True)
+            
+            st.header("Lyric Similarity Evaluation", divider='rainbow')
+            real_lyrics = read_csv_to_string(f"train_{selected_artist.lower().replace(' ', '_')}_dataset.csv")
+            st.subheader(f"Artist: {selected_artist}")
+            st.text("Generated Lyrics:")
+            st.markdown(f"<div style='text-align: center;'><b>{generated_lyrics}</b></div>", unsafe_allow_html=True)
+            st.text("Real Lyrics:")
+            st.markdown(f"<div style='text-align: center;'><b>{real_lyrics[:1000]}</b></div>", unsafe_allow_html=True)
+
+            # Calculate and display cosine similarity
+            similarity = calculate_cosine_similarity(selected_artist, generated_lyrics)
+            st.subheader(f"Cosine Similarity: {similarity}")
+            
+            artist = artist[artist['artist']=='David Guetta']
+            artist = artist.iloc[:,1:].values.flatten()
+            # np.concatenate((embedding, ))
+            # Regression Score Logic
+            st.header("📊 Lyrics Quality Score 🌟")
+            st.write("Calculating the magic of your lyrics...")
+            progress = st.progress(0)
+            model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+            embedding = model.encode(generated_lyrics, normalize_embeddings=True)
+            pca = joblib.load('pca_model.joblib')
+            
+            additional_features = 5613 - 768 -10
+            extra_features = np.zeros(additional_features)
+            expanded_embedding = np.concatenate((embedding, extra_features, artist))
+            transformed_data = pca.transform(expanded_embedding.reshape(1,-1))
+
+            pca_c = joblib.load('pca_model_sanj.joblib')
+            expanded_embedding_c = np.concatenate((embedding, np.zeros(8217-768-10), artist))
+            transformed_data_c = pca_c.transform(expanded_embedding_c.reshape(1,-1))
+            
+            model_c = xgb.XGBClassifier()
+            model_c.load_model('xgb_model.json')
+            category = model_c.predict(transformed_data_c)
+            dictionary = {0: 'Low popularity', 1:'Average popularity', 2:'Mid popularity',3:'High popularity'}
+            lyrics_model = load_model('lyrics_model.h5')
+            regression_score = lyrics_model.predict(transformed_data)
+            
+            for i in range(101):
+                progress.progress(i)
+                time.sleep(0.05)
+            st.success(f"🌟 Popularity Score: {regression_score[0][0]:.2f}")
+            st.success(f"🌟Popularity Category: {dictionary[category[0]]}")
+    
+    summarizer = pipeline("summarization", model="Falconsai/text_summarization")
+    tokenizer = AutoTokenizer.from_pretrained("bloomberg/KeyBART")
+    model = AutoModelForSeq2SeqLM.from_pretrained("bloomberg/KeyBART")
+    # Lyrics Analysis Section
+    st.header("🔍 Dive Deep into Lyrics Analysis 🔬")
+    lyrics = st.text_area("Paste the lyrics for analysis 🧐:", help="Enter lyrics to analyze their essence!")
+
+
+    if st.button('🧪 Conduct Analysis 🕵️'):
+        if model and tokenizer and lyrics and summarizer:
+            st.write('📜 Summarized lyrics')
+            # Assume get_summarized_lyrics is defined and works correctly
+            summ = get_summarized_lyrics(lyrics, summarizer)
+            st.markdown(f"<div style='text-align: center;'><b>{summ}</b></div>", unsafe_allow_html=True)
+            
+            st.write('🔑 Keyword extraction')
+            # Assume get_keywords is defined and works correctly
+            keyword = get_keywords(lyrics)
+            st.markdown(f"<div style='text-align: center;'><b>{keyword}</b></div>", unsafe_allow_html=True)
+        else:
+            st.error('Please enter lyrics for analysis.')
+
+    
+
+if __name__ == "__main__":
+    main()
