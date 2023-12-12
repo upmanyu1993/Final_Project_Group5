@@ -20,6 +20,8 @@ import statsmodels.api as sm
 from scipy import stats
 from statsmodels.stats.stattools import durbin_watson
 
+df = pd.read_csv('spotify_songs2.csv')
+pd.DataFrame(df.columns[:24]).to_csv('columns.csv')
 def dataset(final_data, sentence_embedding, lyrics_features):
 
     # Label Encoding
@@ -230,14 +232,6 @@ def plot_residuals(model, x_test, y_test):
 final_data = pd.read_csv('final_data.csv')
 sentence_embedding = pd.read_csv('sentence_embedding.csv')
 lyrics_feature = pd.read_csv('lyrics_feature.csv')
-
-"""Please Downlaod the data from this !!!:
-Lyrics Feature: https://drive.google.com/file/d/1QUhrtJ5DGMn0HOLhTJqVyLjf6_ykwfI8/view?usp=drive_link
-Sentence Embeding : https://drive.google.com/file/d/1THKiu8BqxsOPbh3jwehk54DotU3YUsMi/view?usp=drive_link
-Final_data: https://drive.google.com/file/d/1W30acoRVqF7hHMfJ_1vuBKl3nm52YS57/view?usp=drive_link
-"""
-
-
 
 df = dataset(final_data, sentence_embedding, lyrics_feature)
 x_train, y_train, x_test, y_test, x_val, y_val = dataset_modelling(df, 0.8, 0.1)
