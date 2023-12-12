@@ -1,6 +1,9 @@
 # Final_Project_Group5
 This repository contains Python scripts for generating lyrics using GPT-2 and summarizing lyrics using a custom lyric summarization algorithm. Additionally, it provides functionality for extracting keywords from lyrics.
 
+
+[The link to download all the models](https://storage.googleapis.com/nlp-final-project-group05/Models.zip). Please put all model files in the folder <code> /Code </code>. 
+
 python Lyrics_generator_byGPT2_fin.py
 This script will create 10 training datasets and 10 evaluation datasets. The GPT-2 model will then be trained using these datasets to generate lyrics. There is no specific order to run scripts; you can run this script independently.
 
