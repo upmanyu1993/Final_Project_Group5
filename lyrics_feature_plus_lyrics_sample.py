@@ -20,6 +20,8 @@ import statsmodels.api as sm
 from scipy import stats
 from statsmodels.stats.stattools import durbin_watson
 
+df = pd.read_csv('spotify_songs2.csv')
+pd.DataFrame(df.columns[:24]).to_csv('columns.csv')
 def dataset(final_data, sentence_embedding, lyrics_features):
 
     # Label Encoding

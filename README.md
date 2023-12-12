@@ -1,57 +1,51 @@
-# Final_Project_Group5
-
 Spotify Song Popularity Predictor
-
 Overview
-This project aims to predict the popularity of songs on Spotify using a unique set of features derived from both musical and lyrical attributes. The prediction model is built using an XGBoost regression framework and optimized through grid search for hyperparameter tuning.
+This project is focused on predicting the popularity of songs on Spotify using a rich set of features derived from both musical and lyrical attributes. The best model for this task is a sophisticated neural network, optimized through careful design and training strategies.
 
 Prerequisites
 Python 3.x
-Libraries: pandas, numpy, sklearn, xgboost, nltk, tqdm (for progress bars), and any other dependencies required for these libraries.
+Libraries: pandas, numpy, sklearn, keras (or tensorflow), and other dependencies.
 Basic understanding of machine learning concepts and Python programming.
 Dataset
-The dataset is a CSV file containing features of Spotify songs. It includes standard musical features like danceability, energy, key, and loudness, as well as custom-processed lyrical features.
+The dataset includes standard musical features like danceability, energy, key, loudness, and custom-processed lyrical features in a CSV file format.
 
 Newly Created Features
-The script processes and creates several unique features from the dataset that are pivotal in predicting song popularity. These features include:
+Unique features from the dataset are crucial for predicting song popularity:
 
-Syllable Count per Line: The number of syllables in each line of a song's lyrics.
-Syllable Count per Word: Average syllable count in the words of the song.
-Syllable Variation: The variability in the number of syllables per line across the song.
-Novel Word Proportion: The proportion of new words in each line compared to the previous line.
-Rhymes per Line: Number of rhyming words in each line.
-Rhymes per Syllable: Average number of rhymes per syllable in the song.
-Rhyme Density: Proportion of syllables in the song that are part of a rhyme.
-End Pairs per Line: Frequency of rhymes at the end of lines.
-End Pairs Variation: Analysis of the change in syllable counts between rhyming lines.
-Average End Score: A metric representing the phonetic similarity of end rhymes.
-Meter Analysis: Classification of lines into metrical patterns such as iambic, trochaic, etc.
-These features were developed to capture the nuanced aspects of music and lyrics that influence a song's popularity.
+Syllable Counts, Variations
+Novel Word Proportions
+Rhyme Densities
+Phonetic Similarities
+Metrical Patterns Analysis
+...and more.
 
-Model
-An XGBoost regression model predicts song popularity based on these features. The model uses grid search to optimize its hyperparameters, aiming to achieve the best performance.
+Best Model: Neural Network with Conv1D and Dense Layers
 
+Architecture:
+Input Layer: Processes 200 features, reduced from the original dataset using PCA.
+Conv1D Layer: Extracts important features from the data segments.
+Flatten Layer: Converts the output of Conv1D into a one-dimensional array.
+Dense Layers: Multiple layers with varying units (512, 256, 128, 100, 50) using 'relu' and 'sigmoid' activations to capture complex patterns in the data.
+Output Layer: A single neuron with sigmoid activation for predicting normalized popularity scores.
+Optimization and Training:
+Compiled with the Adam optimizer.
+Loss function: Mean Squared Error (MSE).
+Includes early stopping and batch processing strategies.
+
+Evaluation:
+The model's performance is evaluated using MSE and other relevant metrics.
 Usage
-Data Preparation:
 
-Ensure your dataset CSV file is placed in an accessible directory.
-Update the file path in the script to point to your dataset.
-Feature Extraction and Processing:
+Data Preparation: Place your dataset in a directory and update the script with the file path.
 
-The script extracts and processes both musical and newly created lyrical features from the dataset.
-Model Training and Evaluation:
+Feature Extraction and Processing: Run the script to process and extract features.
 
-The dataset is split into training and testing sets.
-The XGBoost model is trained on the training set and evaluated on the testing set using mean squared error (MSE).
-Results:
+Model Training and Evaluation: Train the model with the training set and evaluate its performance on the testing set.
 
-The script provides the best hyperparameters, the best grid search score, and the MSE on the test set.
-These outputs help evaluate the model's predictive performance.
-Predictions:
-
-The trained model can be applied to predict the popularity of new songs.
+Results
+Outputs include the model's performance metrics and insights on its predictive accuracy.
+Predictions
+Apply the trained model to predict the popularity of new Spotify songs.
 Notes
-Ensure all required libraries are installed before running the script.
-Hyperparameter grids can be adjusted as needed for different model explorations.
-The effectiveness of the model may vary based on the dataset's quality and characteristics.
-
+Ensure all necessary libraries are installed.
+The model's effectiveness is subject to the quality and characteristics of the data used.

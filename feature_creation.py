@@ -306,87 +306,87 @@ lyrics[expanded_col_names] = lyrics[expanded_col_names].astype(float)
 lyrics.drop(['end_pairs_variation'],axis=1,inplace=True)
 lyrics.to_csv('lyrics_feature.csv',index=False)
 
-# import prosodic as p
-# import concurrent.futures
+import prosodic as p
+import concurrent.futures
 
-# # Configure prosodic for non-verbose mode
-# p.config['print_to_screen'] = 0
+# Configure prosodic for non-verbose mode
+p.config['print_to_screen'] = 0
 
-# def classify_meter(stress_pattern):
-#     meters = {
-#         'iambic': '01',
-#         'trochaic': '10',
-#         'spondaic': '11',
-#         'anapestic': '001',
-#         'dactylic': '100',
-#         'amphibrachic': '010',
-#         'pyrrhic': '00'
-#     }
+def classify_meter(stress_pattern):
+    meters = {
+        'iambic': '01',
+        'trochaic': '10',
+        'spondaic': '11',
+        'anapestic': '001',
+        'dactylic': '100',
+        'amphibrachic': '010',
+        'pyrrhic': '00'
+    }
 
-#     for meter, pattern in meters.items():
-#         if pattern in stress_pattern:
-#             return meter
-#     return 'unknown'
+    for meter, pattern in meters.items():
+        if pattern in stress_pattern:
+            return meter
+    return 'unknown'
 
-# def process_line(line, stress_str2int):
-#     stress_pattern = ''.join([str(stress_str2int[s]) for s in line.str_stress()])
-#     return classify_meter(stress_pattern)
+def process_line(line, stress_str2int):
+    stress_pattern = ''.join([str(stress_str2int[s]) for s in line.str_stress()])
+    return classify_meter(stress_pattern)
 
-# def meter_percentages(text, timeout=5):  # Set the timeout in seconds
-#     pText = p.Text(text)
-#     pText.parse()
-#     meter_counts = {meter: 0 for meter in ['iambic', 'trochaic', 'spondaic', 'anapestic', 'dactylic', 'amphibrachic', 'pyrrhic', 'unknown']}
+def meter_percentages(text, timeout=5):  # Set the timeout in seconds
+    pText = p.Text(text)
+    pText.parse()
+    meter_counts = {meter: 0 for meter in ['iambic', 'trochaic', 'spondaic', 'anapestic', 'dactylic', 'amphibrachic', 'pyrrhic', 'unknown']}
 
-#     with concurrent.futures.ThreadPoolExecutor() as executor:
-#         futures = []
-#         for line in pText.lines():
-#             futures.append(executor.submit(process_line, line, line.stress_str2int))
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = []
+        for line in pText.lines():
+            futures.append(executor.submit(process_line, line, line.stress_str2int))
 
-#         for future in concurrent.futures.as_completed(futures, timeout=timeout):
-#             try:
-#                 meter = future.result()
-#                 meter_counts[meter] += 1
-#             except concurrent.futures.TimeoutError:
-#                 print("Processing line timed out")
-#                 meter_counts['unknown'] += 1
-#             except Exception as e:
-#                 print(f"Error processing line: {e}")
-#                 meter_counts['unknown'] += 1
+        for future in concurrent.futures.as_completed(futures, timeout=timeout):
+            try:
+                meter = future.result()
+                meter_counts[meter] += 1
+            except concurrent.futures.TimeoutError:
+                print("Processing line timed out")
+                meter_counts['unknown'] += 1
+            except Exception as e:
+                print(f"Error processing line: {e}")
+                meter_counts['unknown'] += 1
 
-#     total_lines = sum(meter_counts.values())
-#     meter_percentages = {meter: (count / total_lines) * 100 for meter, count in meter_counts.items()} if total_lines > 0 else meter_counts
+    total_lines = sum(meter_counts.values())
+    meter_percentages = {meter: (count / total_lines) * 100 for meter, count in meter_counts.items()} if total_lines > 0 else meter_counts
     
-#     return meter_percentages
-# # print (df.head())
-# df.index=range(len(df))
+    return meter_percentages
+# print (df.head())
+df.index=range(len(df))
 
-# from tqdm import tqdm
-# for i in tqdm(range(len(df))):
-#     # print (i)
-#     # i=55
-#     meter = meter_percentages(df.loc[i,'lyrics.1'])
-#     df.at[i,'meter_analysis_iambic'] = meter['iambic']
-#     df.at[i,'meter_analysis_trochaic'] = meter['trochaic']
-#     df.at[i,'meter_analysis_spondaic'] = meter['spondaic']
-#     df.at[i,'meter_analysis_anapestic'] = meter['anapestic']
-#     df.at[i,'meter_analysis_dactylic'] = meter['dactylic']
-#     df.at[i,'meter_analysis_amphibrachic'] = meter['amphibrachic']
-#     df.at[i,'meter_analysis_pyrrhic'] = meter['pyrrhic']
-#     df.at[i,'meter_analysis_unknown'] = meter['unknown']
+from tqdm import tqdm
+for i in tqdm(range(len(df))):
+    # print (i)
+    # i=55
+    meter = meter_percentages(df.loc[i,'lyrics.1'])
+    df.at[i,'meter_analysis_iambic'] = meter['iambic']
+    df.at[i,'meter_analysis_trochaic'] = meter['trochaic']
+    df.at[i,'meter_analysis_spondaic'] = meter['spondaic']
+    df.at[i,'meter_analysis_anapestic'] = meter['anapestic']
+    df.at[i,'meter_analysis_dactylic'] = meter['dactylic']
+    df.at[i,'meter_analysis_amphibrachic'] = meter['amphibrachic']
+    df.at[i,'meter_analysis_pyrrhic'] = meter['pyrrhic']
+    df.at[i,'meter_analysis_unknown'] = meter['unknown']
 
-# df.to_csv('/content/drive/MyDrive/spotify_songs3.csv',index=False)
-
-
-# df11 = pd.DataFrame(np.concatenate([df.iloc[:,12:24], df.iloc[:,26:]],axis=1), columns = np.concatenate([df.iloc[:,12:24].columns, df.iloc[:,26:].columns]))
-# df11['track_popularity'] = df['track_popularity'].tolist()
-# df = df11.copy()
+df.to_csv('/content/drive/MyDrive/spotify_songs3.csv',index=False)
 
 
-# # Drop the original columns if they are no longer needed
-# df = df.drop(['syllable_per_line', 'novel_word_proportion', 'end_pairs_variation','rhymes_per_line'], axis=1)
-# df.fillna(0,inplace=True)
-# df_111 = df.head(100)
+df11 = pd.DataFrame(np.concatenate([df.iloc[:,12:24], df.iloc[:,26:]],axis=1), columns = np.concatenate([df.iloc[:,12:24].columns, df.iloc[:,26:].columns]))
+df11['track_popularity'] = df['track_popularity'].tolist()
+df = df11.copy()
 
-# df.to_csv('data_model.csv',index=False)
 
-# # df = pd.read_csv('data_model.csv')
+# Drop the original columns if they are no longer needed
+df = df.drop(['syllable_per_line', 'novel_word_proportion', 'end_pairs_variation','rhymes_per_line'], axis=1)
+df.fillna(0,inplace=True)
+df_111 = df.head(100)
+
+df.to_csv('data_model.csv',index=False)
+
+# df = pd.read_csv('data_model.csv')
