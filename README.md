@@ -25,3 +25,8 @@ Explore additional analysis in the pages/1_Further_Analysis.py file, which conta
 The app utilizes the lyrics_analysis.py and sample.py scripts to offer a seamless experience for users.
 Main App: To run the main app, execute the Lyric_Genie.py file - This will launch the Streamlit app, providing you with a user interface to interact with the lyric generation, summarization, and keyword extraction features.
 
+Lyrics feature plus lyrics sample:  This is the regression model which uses cnn and does the preprocessing
+
+Lyrics gatherer: It gives the embedding to the songs lyrics
+
+feature creation: It creates new features on the basis of lyrics
